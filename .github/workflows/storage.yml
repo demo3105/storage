@@ -38,4 +38,6 @@ jobs:
           --container-name "qadbcontroldb" \
           --file "$file" \
           --name "demodb/$(basename "$file")"
+          --overwrite
+
         done
