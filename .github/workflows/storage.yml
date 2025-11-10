@@ -11,10 +11,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up Azure CLI
-      uses: azure/cli@v1
-
-   
 
     - name: Login to Azure using Service Principal
       run: |
