@@ -1,7 +1,14 @@
 {
   "name": "Ashwithaggg",
   "age": 25,
-  "email": "ashkumar@example.com",
+  "email": "ash@example.com",
+  "skills": ["Python", "JavaScript", "Git"],
+  "isActive": true
+}
+{
+  "name": "Ashwithaggg",
+  "age": 25,
+  "email": "ash@example.com",
   "skills": ["Python", "JavaScript", "Git"],
   "isActive": true
 }
