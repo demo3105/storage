@@ -39,5 +39,4 @@ jobs:
           --file "$file" \
           --name "demodb/$(basename "$file")"
           --overwrite
-
         done
