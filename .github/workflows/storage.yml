@@ -27,19 +27,15 @@ jobs:
         STORAGE_ACCOUNT="qademostorage123"
         CONTAINER_NAME="qadbcontroldb"
         SOURCE_DIR="storage folder"  # Path to your JSON files in repo
-
-        # Get storage account key
-        ACCOUNT_KEY=$(az storage account keys list \
-          --resource-group "demostorage" \
-          --account-name "qademostorage123" \
-          --query "[0].value" -o tsv)
+        
 
         # Upload all JSON files from the source directory
         find "$SOURCE_DIR" -name "*.json" | while read file; do
+
           az storage blob upload \
-            --account-name "qademostorage123" \
-            --account-key "$ACCOUNT_KEY" \
-            --container-name "qadbcontroldb" \
-            --file "$file" \
-            --name "$(basename "$file")" 
+          --auth-mode login \
+          --account-name "qademostorage123" \
+          --container-name "qadbcontroldb" \
+          --file "$file" \
+          --name "$(basename "$file")" \
         done
