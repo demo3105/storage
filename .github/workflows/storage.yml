@@ -37,6 +37,6 @@ jobs:
           --account-name "qademostorage123" \
           --container-name "qadbcontroldb" \
           --file "$file" \
-          --name "demodb/$(basename "$file")"
+          --name "demodb/$(basename "$file")"\
           --overwrite
         done
