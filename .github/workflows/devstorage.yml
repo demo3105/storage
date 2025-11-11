@@ -1,4 +1,4 @@
-name: Deploy JSON to QA Storage
+name: Deploy JSON to dev Storage
 
 on:
   workflow_dispatch:  # Allows manual trigger from GitHub UI
@@ -27,12 +27,12 @@ jobs:
           --tenant "${{ secrets.AZURE_TENANT_ID }}"
     
 
-    - name: Upload JSON files to QA Storage
+    - name: Upload JSON files to dev Storage
       run: |
         # Define your environment-specific variables
         RESOURCE_GROUP="demostorage"
-        STORAGE_ACCOUNT="qademostorage123"
-        CONTAINER_NAME="qadbcontroldb"
+        STORAGE_ACCOUNT="rgdemostorage"
+        CONTAINER_NAME="dbfolder"
         SOURCE_DIR="storage folder"  # Path to your JSON files in repo
         
 
@@ -41,8 +41,8 @@ jobs:
 
           az storage blob upload \
           --auth-mode login \
-          --account-name "qademostorage123" \
-          --container-name "qadbcontroldb" \
+          --account-name "rgdemostorage" \
+          --container-name "dbfolder" \
           --file "$file" \
           --name "demodb/$(basename "$file")"\
           --overwrite
