@@ -1,4 +1,4 @@
-name: Deploy JSON to dev Storage
+name: Deploy JSON to devenv Storage
 
 on:
   workflow_dispatch:  # Allows manual trigger from GitHub UI
