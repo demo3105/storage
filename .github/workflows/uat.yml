@@ -1,0 +1,49 @@
+name: Deploy JSON to uatdemo Storage
+
+on:
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+  push:
+    branches:
+      - dev  # Only trigger on pushes to the dev branch
+    paths:
+      - 'storage folder/**'  # Only trigger if files in this folder change
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+
+    - name: Login to Azure using Service Principal
+      run: |
+        az login --service-principal \
+          --username "${{ secrets.AZURE_CLIENT_ID }}" \
+          --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
+          --tenant "${{ secrets.AZURE_TENANT_ID }}"
+    
+
+    - name: Upload JSON files to QA Storage
+      run: |
+        # Define your environment-specific variables
+        RESOURCE_GROUP="demostorage"
+        STORAGE_ACCOUNT="qademostorage123"
+        CONTAINER_NAME="qadbcontroldb"
+        SOURCE_DIR="storage folder"  # Path to your JSON files in repo
+        
+
+        # Upload all JSON files from the source directory
+        find "$SOURCE_DIR" -name "*.json" | while read file; do
+
+          az storage blob upload \
+          --auth-mode login \
+          --account-name "qademostorage123" \
+          --container-name "qadbcontroldb" \
+          --file "$file" \
+          --name "demodb/$(basename "$file")"\
+          --overwrite
+        done
