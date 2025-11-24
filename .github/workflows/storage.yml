@@ -26,9 +26,9 @@ jobs:
     - name: Load QA Parameters
       id: params
       run: |
-        STORAGE=$(yq '.storage_account' parameters/qa.yml)
-        CONTAINER=$(yq '.container_name' parameters/qa.yml)
-        RG=$(yq '.resource_group' parameters/qa.yml)
+        STORAGE=$(yq '.storage_account' parameter/qa.yml)
+        CONTAINER=$(yq '.container_name' parameter/qa.yml)
+        RG=$(yq '.resource_group' parameter/qa.yml)
 
         echo "STORAGE=$STORAGE" >> $GITHUB_OUTPUT
         echo "CONTAINER=$CONTAINER" >> $GITHUB_OUTPUT
