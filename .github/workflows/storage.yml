@@ -26,8 +26,8 @@ jobs:
     - name: Load QA parameters
       id: params
       run: |
-        SOURCEACCOUNT=$(yq '.sourceaccount' parameters/qa.yml)
-        SOURCEURL=$(yq '.sourceURL' parameters/qa.yml)
+        SOURCEACCOUNT=$(yq '.sourceaccount' parameter/qa.yml)
+        SOURCEURL=$(yq '.sourceURL' parameter/qa.yml)
 
         echo "SOURCEACCOUNT=$OURCEACCOUNT" >> $GITHUB_OUTPUT
         echo "SOURCEURL=$SOURCEURL" >> $GITHUB_OUTPUT
@@ -43,7 +43,7 @@ jobs:
     # Replace DEV values with QA values
     - name: Replace DEV values with QA values in JSON files
       run: |
-        SOURCE_DIR="storage folder"
+        SOURCE_DIR="storage_folder"
 
         # DEV Values from your JSON
         DEV_SOURCEACCOUNT="rgdemostorage"
@@ -53,10 +53,10 @@ jobs:
           echo "Updating $file"
 
           # Replace sourceaccount
-          sed -i "s/$DEV_SOURCEACCOUNT/${{ steps.params.outputs.QA_SOURCEACCOUNT }}/g" "$file"
+          sed -i "s/$DEV_SOURCEACCOUNT/${{ steps.params.outputs.SOURCEACCOUNT }}/g" "$file"
 
           # Replace sourceURL
-          sed -i "s|$DEV_SOURCEURL|${{ steps.params.outputs.QA_SOURCEURL }}|g" "$file"
+          sed -i "s|$DEV_SOURCEURL|${{ steps.params.outputs.SOURCEURL }}|g" "$file"
         done
 
 
@@ -65,7 +65,7 @@ jobs:
       run: |
         STORAGE_ACCOUNT="qademostorage123"
         CONTAINER_NAME="qadbcontroldb"
-        SOURCE_DIR="storage folder"
+        SOURCE_DIR="storage_folder"
 
         for file in $(find "$SOURCE_DIR" -name "*.json"); do
           echo "Uploading $file"
