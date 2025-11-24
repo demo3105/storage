@@ -7,7 +7,7 @@ on:
     branches:
       - test
     paths:
-      - 'storage_folder/**'
+      - 'storage folder/**'
 
 jobs:
   deploy:
@@ -22,19 +22,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y yq
 
-    # STEP 1: Load parameter file
-    - name: Load QA Parameters
+    # Load QA parameters
+    - name: Load QA parameters
       id: params
       run: |
-        STORAGE=$(yq '.storage_account' parameter/qa.yml)
-        CONTAINER=$(yq '.container_name' parameter/qa.yml)
-        RG=$(yq '.resource_group' parameter/qa.yml)
+        SOURCEACCOUNT=$(yq '.sourceaccount' parameters/qa.yml)
+        SOURCEURL=$(yq '.sourceURL' parameters/qa.yml)
 
-        echo "STORAGE=$STORAGE" >> $GITHUB_OUTPUT
-        echo "CONTAINER=$CONTAINER" >> $GITHUB_OUTPUT
-        echo "RG=$RG" >> $GITHUB_OUTPUT
+        echo "SOURCEACCOUNT=$OURCEACCOUNT" >> $GITHUB_OUTPUT
+        echo "SOURCEURL=$SOURCEURL" >> $GITHUB_OUTPUT
 
-    # STEP 2: Login to Azure
     - name: Login to Azure using Service Principal
       run: |
         az login --service-principal \
@@ -42,18 +39,41 @@ jobs:
           --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
           --tenant "${{ secrets.AZURE_TENANT_ID }}"
 
-    # STEP 3: Upload JSON files
+
+    # Replace DEV values with QA values
+    - name: Replace DEV values with QA values in JSON files
+      run: |
+        SOURCE_DIR="storage folder"
+
+        # DEV Values from your JSON
+        DEV_SOURCEACCOUNT="rgdemostorage"
+        DEV_SOURCEURL="storagecamp01us2dev.dfs.core.windows.net"
+
+        for file in $(find "$SOURCE_DIR" -name "*.json"); do
+          echo "Updating $file"
+
+          # Replace sourceaccount
+          sed -i "s/$DEV_SOURCEACCOUNT/${{ steps.params.outputs.QA_SOURCEACCOUNT }}/g" "$file"
+
+          # Replace sourceURL
+          sed -i "s|$DEV_SOURCEURL|${{ steps.params.outputs.QA_SOURCEURL }}|g" "$file"
+        done
+
+
+    # Upload JSON files
     - name: Upload JSON files to QA Storage
       run: |
-        SOURCE_DIR="storage_folder"
+        STORAGE_ACCOUNT="qademostorage123"
+        CONTAINER_NAME="qadbcontroldb"
+        SOURCE_DIR="storage folder"
 
         for file in $(find "$SOURCE_DIR" -name "*.json"); do
           echo "Uploading $file"
 
           az storage blob upload \
             --auth-mode login \
-            --account-name "${{ steps.params.outputs.STORAGE }}" \
-            --container-name "${{ steps.params.outputs.CONTAINER }}" \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$CONTAINER_NAME" \
             --file "$file" \
             --name "demodb/$(basename "$file")" \
             --overwrite
