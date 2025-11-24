@@ -1,14 +1,13 @@
 name: Deploy JSON to QA Storage
 
 on:
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
   push:
     branches:
-      - test  # Only trigger on pushes to the dev branch
+      - test
     paths:
-      - 'storage folder/**'  # Only trigger if files in this folder change
-
+      - 'storage folder/**'
 
 jobs:
   deploy:
@@ -18,32 +17,44 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Install yq
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y yq
 
+    # STEP 1: Load parameter file
+    - name: Load QA Parameters
+      id: params
+      run: |
+        STORAGE=$(yq '.storage_account' parameters/parameter-qa.yml)
+        CONTAINER=$(yq '.container_name' parameters/parameter-qa.yml)
+        RG=$(yq '.resource_group' parameters/parameter-qa.yml)
+
+        echo "STORAGE=$STORAGE" >> $GITHUB_OUTPUT
+        echo "CONTAINER=$CONTAINER" >> $GITHUB_OUTPUT
+        echo "RG=$RG" >> $GITHUB_OUTPUT
+
+    # STEP 2: Login to Azure
     - name: Login to Azure using Service Principal
       run: |
         az login --service-principal \
           --username "${{ secrets.AZURE_CLIENT_ID }}" \
           --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
           --tenant "${{ secrets.AZURE_TENANT_ID }}"
-    
 
+    # STEP 3: Upload JSON files
     - name: Upload JSON files to QA Storage
       run: |
-        # Define your environment-specific variables
-        RESOURCE_GROUP="demostorage"
-        STORAGE_ACCOUNT="qademostorage123"
-        CONTAINER_NAME="qadbcontroldb"
-        SOURCE_DIR="storage folder"  # Path to your JSON files in repo
-        
+        SOURCE_DIR="storage folder"
 
-        # Upload all JSON files from the source directory
-        find "$SOURCE_DIR" -name "*.json" | while read file; do
+        for file in $(find "$SOURCE_DIR" -name "*.json"); do
+          echo "Uploading $file"
 
           az storage blob upload \
-          --auth-mode login \
-          --account-name "qademostorage123" \
-          --container-name "qadbcontroldb" \
-          --file "$file" \
-          --name "demodb/$(basename "$file")"\
-          --overwrite
+            --auth-mode login \
+            --account-name "${{ steps.params.outputs.STORAGE }}" \
+            --container-name "${{ steps.params.outputs.CONTAINER }}" \
+            --file "$file" \
+            --name "demodb/$(basename "$file")" \
+            --overwrite
         done
