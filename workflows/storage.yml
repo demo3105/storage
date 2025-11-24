@@ -1,8 +1,0 @@
-#This is my yaml code for the storage account
-
-name: Storage Account Workflow
-on:
-  push:
-    branches:
-      - main          
-
