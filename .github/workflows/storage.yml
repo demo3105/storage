@@ -7,7 +7,7 @@ on:
     branches:
       - test
     paths:
-      - 'storage folder/**'
+      - 'storage_folder/**'
 
 jobs:
   deploy:
@@ -45,7 +45,7 @@ jobs:
     # STEP 3: Upload JSON files
     - name: Upload JSON files to QA Storage
       run: |
-        SOURCE_DIR="storage folder"
+        SOURCE_DIR="storage_folder"
 
         for file in $(find "$SOURCE_DIR" -name "*.json"); do
           echo "Uploading $file"
