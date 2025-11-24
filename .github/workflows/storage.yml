@@ -29,7 +29,7 @@ jobs:
         SOURCEACCOUNT=$(yq '.sourceaccount' parameter/qa.yml)
         SOURCEURL=$(yq '.sourceURL' parameter/qa.yml)
 
-        echo "SOURCEACCOUNT=$OURCEACCOUNT" >> $GITHUB_OUTPUT
+        echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_OUTPUT
         echo "SOURCEURL=$SOURCEURL" >> $GITHUB_OUTPUT
 
     - name: Login to Azure using Service Principal
