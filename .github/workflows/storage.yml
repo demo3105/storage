@@ -50,6 +50,10 @@ jobs:
           PARAM_FILE="parameter/${ENV}.yml"
           echo "Using parameter file: $PARAM_FILE"
 
+          RESOURCE_GROUP=$(yq '.resource_group' $PARAM_FILE)
+          STORAGE_ACCOUNT=$(yq '.storage_account' $PARAM_FILE)
+          CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE)
+
           # Export top-level keys (excluding replacements) to GITHUB_ENV
           while IFS="=" read -r key value; do
             echo "${key^^}=$value" >> $GITHUB_ENV
