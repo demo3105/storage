@@ -72,10 +72,12 @@ jobs:
 
       - name: Azure login using Service Principal
         run: |
+    
           az login --service-principal \
-            --username "${{ secrets.CLIENTID }}" \
-            --password "${{ secrets.CLIENTSECRET }}" \
-            --tenant "${{ secrets.TENANTID }}"
+          --username "${{ secrets.AZURE_CLIENT_ID }}" \
+          --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
+          --tenant "${{ secrets.AZURE_TENANT_ID }}"
+    
         
 
       - name: Replace DEV values with Environment values
