@@ -76,7 +76,7 @@ jobs:
             --username "${{ secrets.CLIENTID }}" \
             --password "${{ secrets.CLIENTSECRET }}" \
             --tenant "${{ secrets.TENANTID }}"
-          az account set --subscription "${{ secrets.SPN_SUBID }}"
+        
 
       - name: Replace DEV values with Environment values
         run: |
