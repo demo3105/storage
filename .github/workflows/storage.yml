@@ -27,7 +27,6 @@ jobs:
             echo "environment=prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=dev" >> "$GITHUB_OUTPUT"
-          fi
 
   deploy:
     name: Deploy Metadata - ${{ needs.get_environment.outputs.environment }}
@@ -70,20 +69,4 @@ jobs:
           for file in $(find "$SOURCE_DIR" -name "*.json"); do
             echo "Updating $file"
             while IFS="=" read -r key value; do
-              sed -i "s|__${key}__|$value|g" "$file"
-            done < <(yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' "parameter/${{ needs.get_environment.outputs.environment }}.yml")
-          done
-
-      - name: Upload JSON files to Storage
-        run: |
-          for file in $(find "$SOURCE_DIR" -name "*.json"); do
-            rel_path="demodb/$(basename "$file")"
-            echo "Uploading $file --> $rel_path"
-            az storage blob upload \
-              --auth-mode login \
-              --account-name "$STORAGE_ACCOUNT" \
-              --container-name "$CONTAINER_NAME" \
-              --file "$file" \
-              --name "$rel_path" \
-              --overwrite
-          done
+              sed -i "s|__${key}__
