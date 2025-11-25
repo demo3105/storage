@@ -23,14 +23,22 @@ jobs:
         sudo apt-get install -y yq
 
     # Load QA parameters
-    - name: Load QA parameters
+    
+    - name: Load environment parameters
       id: params
       run: |
-        SOURCEACCOUNT=$(yq '.sourceaccount' parameter/qa.yml)
-        SOURCEURL=$(yq '.sourceURL' parameter/qa.yml)
+          ENV="${{ needs.get_environment.outputs.environment }}"
+          PARAM_FILE="parameter/${ENV}.yml"
 
-        echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_OUTPUT
-        echo "SOURCEURL=$SOURCEURL" >> $GITHUB_OUTPUT
+          echo "Using parameter file: $PARAM_FILE"
+
+          SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE)
+          SOURCEURL=$(yq '.sourceURL' $PARAM_FILE)
+  
+
+          echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_ENV
+          echo "SOURCEURL=$SOURCEURL" >> $GITHUB_ENV
+
 
     - name: Login to Azure using Service Principal
       run: |
