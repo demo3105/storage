@@ -1,3 +1,4 @@
+replacements:
 storage_account: "qademostorage123"
 container_name: "qadbcontroldb"
 resource_group: "demostorage"
