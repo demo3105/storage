@@ -1,0 +1,12 @@
+[
+    {
+        "LSName": "LS_ADLS_DFS_MI_CAMP",
+		"sourceType": "adlsgen2",
+        "AuthType": "ManagedIdentity",
+		"sourceaccount": "rgdemostorage",
+		"sourceURL": "storagecamp01us2dev.dfs.core.windows.net",
+		"sourceAuthSPName": ""
+		"source": "devde"
+		
+    }
+]
