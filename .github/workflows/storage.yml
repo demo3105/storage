@@ -27,6 +27,7 @@ jobs:
             echo "environment=prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=dev" >> "$GITHUB_OUTPUT"
+          fi
 
   deploy:
     name: Deploy Metadata - ${{ needs.get_environment.outputs.environment }}
