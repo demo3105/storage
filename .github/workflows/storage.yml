@@ -22,10 +22,11 @@ jobs:
       environment: ${{ steps.setenv.outputs.environment }}
       param_file: ${{ steps.setenv.outputs.param_file }}
     steps:
-
       - id: setenv
         run: |
           BRANCH="${{ github.ref_name }}"
+
+          echo "Branch = $BRANCH"
 
           if [ "$BRANCH" = "develop" ]; then
             echo "environment=dev" >> $GITHUB_OUTPUT
@@ -42,7 +43,6 @@ jobs:
           else
             echo "environment=dev" >> $GITHUB_OUTPUT
             echo "param_file=parameter/dev.yml" >> $GITHUB_OUTPUT
-
           fi
 
   deploy:
@@ -53,10 +53,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install tools
+      # IMPORTANT: Install correct yq version (Mike Farah)
+      - name: Install yq (correct version)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y yq jq
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+            -O /usr/bin/yq
+          chmod +x /usr/bin/yq
+          yq --version
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
 
       - name: Load environment parameters
         id: params
@@ -64,14 +70,21 @@ jobs:
           PARAM_FILE="${{ needs.get_environment.outputs.param_file }}"
           echo "Using parameter file: $PARAM_FILE"
 
-          # Extract basic parameters
-          STORAGE_ACCOUNT=$(yq '.storage_account' $PARAM_FILE | tr -d '"')
-          CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE | tr -d '"')
+          STORAGE_ACCOUNT=$(yq '.storage_account' "$PARAM_FILE" | tr -d '"')
+          CONTAINER_NAME=$(yq '.container_name' "$PARAM_FILE" | tr -d '"')
 
           echo "STORAGE_ACCOUNT=$STORAGE_ACCOUNT" >> $GITHUB_ENV
           echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
           echo "SOURCE_DIR=storage_folder" >> $GITHUB_ENV
           echo "PARAM_FILE=$PARAM_FILE" >> $GITHUB_ENV
+
+      # Debug YAML to confirm replacements block exists
+      - name: Debug PARAM FILE
+        run: |
+          echo "===== PARAM FILE ====="
+          cat "${{ env.PARAM_FILE }}"
+          echo "===== REPLACEMENTS BLOCK ====="
+          yq '.replacements' "${{ env.PARAM_FILE }}"
 
       - name: Azure Login
         run: |
@@ -79,50 +92,46 @@ jobs:
             --username "${{ secrets.AZURE_CLIENT_ID }}" \
             --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
             --tenant "${{ secrets.AZURE_TENANT_ID }}"
-          
           az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+
       - name: Dynamic Replacement for ALL values
         run: |
           PARAM_FILE="${{ env.PARAM_FILE }}"
           SOURCE_DIR="${{ env.SOURCE_DIR }}"
 
-          echo "PARAM FILE = $PARAM_FILE"
+          echo "Performing dynamic replacements from: $PARAM_FILE"
 
-          echo "Performing dynamic replacements..."
-
-          # Validate replacements block exists
-          if ! yq eval '.replacements' "$PARAM_FILE" >/dev/null; then
-            echo "No replacements block found, skipping."
+          # Ensure replacements block exists
+          if ! yq '.replacements' "$PARAM_FILE" >/dev/null; then
+            echo "No replacements section found. Skipping."
             exit 0
           fi
 
-          # Loop through all replacements
+          # Loop through all replacement entries
           for row in $(yq '.replacements | to_entries | .[] | @base64' "$PARAM_FILE"); do
-            _kv() { echo "$row" | base64 --decode | jq -r "${1}"; }
+            _kv() { echo "$row" | base64 --decode | jq -r "$1"; }
 
             DEV_VALUE=$(_kv '.key')
             ENV_VALUE=$(_kv '.value')
 
-            echo "Replacing: $DEV_VALUE --> $ENV_VALUE"
+            echo "Replacing: $DEV_VALUE  -->  $ENV_VALUE"
 
-            # Apply replacements across all JSON files
+            # Apply this replacement in all JSON files
             for file in $(find "$SOURCE_DIR" -name "*.json"); do
               sed -i "s|$DEV_VALUE|$ENV_VALUE|g" "$file"
             done
           done
 
-
       - name: Upload JSON Files to Storage
         run: |
-          for file in $(find "$SOURCE_DIR" -name "*.json"); do
-
+          for file in $(find "${{ env.SOURCE_DIR }}" -name "*.json"); do
             BLOB_PATH="demodb/$(basename "$file")"
             echo "Uploading $file to $BLOB_PATH"
 
             az storage blob upload \
               --auth-mode login \
-              --account-name "$STORAGE_ACCOUNT" \
-              --container-name "$CONTAINER_NAME" \
+              --account-name "${{ env.STORAGE_ACCOUNT }}" \
+              --container-name "${{ env.CONTAINER_NAME }}" \
               --file "$file" \
               --name "$BLOB_PATH" \
               --overwrite
