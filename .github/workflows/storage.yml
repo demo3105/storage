@@ -95,14 +95,15 @@ jobs:
 
       - name: Upload JSON files to Storage
         run: |
+          
           for file in $(find "$SOURCE_DIR" -name "*.json"); do
             rel_path="demodb/$(basename "$file")"
             echo "Uploading $file --> $rel_path"
 
             az storage blob upload \
               --auth-mode login \
-              --account-name "$STORAGE_ACCOUNT" \
-              --container-name "$CONTAINER_NAME" \
+              --account-name "$STORAGEACCOUNT" \
+              --container-name "$CONTAINERNAME" \
               --file "$file" \
               --name "$rel_path" \
               --overwrite
