@@ -81,24 +81,36 @@ jobs:
             --tenant "${{ secrets.AZURE_TENANT_ID }}"
           
           az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-
       - name: Dynamic Replacement for ALL values
         run: |
-          echo "Performing dynamic replacements based on $PARAM_FILE"
+          PARAM_FILE="${{ env.PARAM_FILE }}"
+          SOURCE_DIR="${{ env.SOURCE_DIR }}"
 
-          # Loop through replacements in YAML
-          for row in $(yq '.replacements | to_entries | .[] | @base64' $PARAM_FILE); do
-            _kv() { echo ${row} | base64 --decode | jq -r ${1}; }
+          echo "PARAM FILE = $PARAM_FILE"
+
+          echo "Performing dynamic replacements..."
+
+          # Validate replacements block exists
+          if ! yq eval '.replacements' "$PARAM_FILE" >/dev/null; then
+            echo "No replacements block found, skipping."
+            exit 0
+          fi
+
+          # Loop through all replacements
+          for row in $(yq '.replacements | to_entries | .[] | @base64' "$PARAM_FILE"); do
+            _kv() { echo "$row" | base64 --decode | jq -r "${1}"; }
 
             DEV_VALUE=$(_kv '.key')
             ENV_VALUE=$(_kv '.value')
 
-            echo "Replacing '$DEV_VALUE' --> '$ENV_VALUE'"
+            echo "Replacing: $DEV_VALUE --> $ENV_VALUE"
 
+            # Apply replacements across all JSON files
             for file in $(find "$SOURCE_DIR" -name "*.json"); do
               sed -i "s|$DEV_VALUE|$ENV_VALUE|g" "$file"
             done
           done
+
 
       - name: Upload JSON Files to Storage
         run: |
