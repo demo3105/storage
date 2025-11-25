@@ -27,7 +27,6 @@ jobs:
             echo "environment=prod" >> "$GITHUB_OUTPUT"
           else
             echo "environment=dev" >> "$GITHUB_OUTPUT"
-          fi
 
   deploy:
     name: Deploy Metadata - ${{ needs.get_environment.outputs.environment }}
@@ -38,27 +37,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install yq and jq
+      - name: Install yq
         run: |
           sudo apt-get update
-          sudo apt-get install -y yq jq
+          sudo apt-get install -y yq
 
       - name: Load environment parameters
         id: params
         run: |
           ENV="${{ needs.get_environment.outputs.environment }}"
           PARAM_FILE="parameter/${ENV}.yml"
-
           echo "Using parameter file: $PARAM_FILE"
 
-          # Convert YAML to JSON for easier looping
-          yq -o=json "$PARAM_FILE" > params.json
-
-          # Export all keys to GITHUB_ENV
-          for key in $(jq -r 'keys[]' params.json); do
-            value=$(jq -r ".${key}" params.json)
+          # Export all keys from YAML to GITHUB_ENV
+          while IFS="=" read -r key value; do
             echo "${key^^}=$value" >> $GITHUB_ENV
-          done
+          done < <(yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' "$PARAM_FILE")
 
           echo "SOURCE_DIR=storage_folder" >> $GITHUB_ENV
 
@@ -73,10 +67,9 @@ jobs:
         run: |
           for file in $(find "$SOURCE_DIR" -name "*.json"); do
             echo "Updating $file"
-            for key in $(jq -r 'keys[]' params.json); do
-              value=$(jq -r ".${key}" params.json)
+            while IFS="=" read -r key value; do
               sed -i "s|__${key}__|$value|g" "$file"
-            done
+            done < <(yq eval '. | to_entries | .[] | "\(.key)=\(.value)"' "parameter/${{ needs.get_environment.outputs.environment }}.yml")
           done
 
       - name: Upload JSON files to Storage
@@ -84,7 +77,6 @@ jobs:
           for file in $(find "$SOURCE_DIR" -name "*.json"); do
             rel_path="demodb/$(basename "$file")"
             echo "Uploading $file --> $rel_path"
-
             az storage blob upload \
               --auth-mode login \
               --account-name "$STORAGEACCOUNT" \
