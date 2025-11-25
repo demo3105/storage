@@ -1,32 +1,59 @@
-name: Deploy JSON to QA Storage
+name: Deploy JSON to Storage (Converted)
 
 on:
   workflow_dispatch:
+ 
+    
+ 
+concurrency:
+  group: github-metadata-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-  push:
-    branches:
-      - test
-    paths:
-      - 'storage folder/**'
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  deploy:
+  get_environment:
+    name: Get Environment
     runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.get_environment.outputs.environment }}
+      #deploy_env: ${{ steps.get_environment.outputs.deploy_env }}
+    steps:
+      - id: get_environment
+        run: |
+          branch="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref_name }}"
+          if [ "$branch" == "test" ]; then
+            echo "environment=qa" >> "$GITHUB_OUTPUT"
+            #echo "deploy_env=test-deploy" >> "$GITHUB_OUTPUT"
+          elif [ "$branch" == "main" ]; then
+            echo "environment=prod" >> "$GITHUB_OUTPUT"
+            echo "deploy_env=prod-deploy" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=dev" >> "$GITHUB_OUTPUT"
+            #echo "deploy_env=dev-deploy" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Deploy Metadata - ${{ needs.get_environment.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [get_environment]
+    environment: ${{ needs.get_environment.outputs.deploy_env }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install yq
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y yq
+      - name: Install yq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y yq
 
-    # Load QA parameters
-    
-    - name: Load environment parameters
-      id: params
-      run: |
+      # Load environment parameter YAML
+      - name: Load environment parameters
+        id: params
+        run: |
           ENV="${{ needs.get_environment.outputs.environment }}"
           PARAM_FILE="parameter/${ENV}.yml"
 
@@ -34,55 +61,46 @@ jobs:
 
           SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE)
           SOURCEURL=$(yq '.sourceURL' $PARAM_FILE)
-  
+          STORAGE_ACCOUNT=$(yq '.storage_account' $PARAM_FILE)
+          CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE)
 
           echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_ENV
           echo "SOURCEURL=$SOURCEURL" >> $GITHUB_ENV
+          echo "STORAGEACCOUNT=$STORAGE_ACCOUNT" >> $GITHUB_ENV
+          echo "CONTAINERNAME=$CONTAINER_NAME" >> $GITHUB_ENV
+          echo "SOURCE_DIR=storage_folder" >> $GITHUB_ENV
 
+      - name: Azure login using Service Principal
+        run: |
+          az login --service-principal \
+            --username "${{ secrets.CLIENTID }}" \
+            --password "${{ secrets.CLIENTSECRET }}" \
+            --tenant "${{ secrets.TENANTID }}"
+          az account set --subscription "${{ secrets.SPN_SUBID }}"
 
-    - name: Login to Azure using Service Principal
-      run: |
-        az login --service-principal \
-          --username "${{ secrets.AZURE_CLIENT_ID }}" \
-          --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
-          --tenant "${{ secrets.AZURE_TENANT_ID }}"
+      - name: Replace DEV values with Environment values
+        run: |
+          DEV_SOURCEACCOUNT="rgdemostorage"
+          DEV_SOURCEURL="storagecamp01us2dev.dfs.core.windows.net"
 
+          for file in $(find "$SOURCE_DIR" -name "*.json"); do
+            echo "Updating $file"
 
-    # Replace DEV values with QA values
-    - name: Replace DEV values with QA values in JSON files
-      run: |
-        SOURCE_DIR="storage_folder"
+            sed -i "s/$DEV_SOURCEACCOUNT/$SOURCEACCOUNT/g" "$file"
+            sed -i "s|$DEV_SOURCEURL|$SOURCEURL|g" "$file"
+          done
 
-        # DEV Values from your JSON
-        DEV_SOURCEACCOUNT="rgdemostorage"
-        DEV_SOURCEURL="storagecamp01us2dev.dfs.core.windows.net"
+      - name: Upload JSON files to Storage
+        run: |
+          for file in $(find "$SOURCE_DIR" -name "*.json"); do
+            rel_path="demodb/$(basename "$file")"
+            echo "Uploading $file --> $rel_path"
 
-        for file in $(find "$SOURCE_DIR" -name "*.json"); do
-          echo "Updating $file"
-
-          # Replace sourceaccount
-          sed -i "s/$DEV_SOURCEACCOUNT/${{ steps.params.outputs.SOURCEACCOUNT }}/g" "$file"
-
-          # Replace sourceURL
-          sed -i "s|$DEV_SOURCEURL|${{ steps.params.outputs.SOURCEURL }}|g" "$file"
-        done
-
-
-    # Upload JSON files
-    - name: Upload JSON files to QA Storage
-      run: |
-        STORAGE_ACCOUNT="qademostorage123"
-        CONTAINER_NAME="qadbcontroldb"
-        SOURCE_DIR="storage_folder"
-
-        for file in $(find "$SOURCE_DIR" -name "*.json"); do
-          echo "Uploading $file"
-
-          az storage blob upload \
-            --auth-mode login \
-            --account-name "$STORAGE_ACCOUNT" \
-            --container-name "$CONTAINER_NAME" \
-            --file "$file" \
-            --name "demodb/$(basename "$file")" \
-            --overwrite
-        done
+            az storage blob upload \
+              --auth-mode login \
+              --account-name "$STORAGEACCOUNT" \
+              --container-name "$CONTAINERNAME" \
+              --file "$file" \
+              --name "$rel_path" \
+              --overwrite
+          done
