@@ -58,11 +58,11 @@ jobs:
           PARAM_FILE="parameter/${ENV}.yml"
 
           echo "Using parameter file: $PARAM_FILE"
-
-          SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE)
-          SOURCEURL=$(yq '.sourceURL' $PARAM_FILE)
-          STORAGE_ACCOUNT=$(yq '.storage_account' $PARAM_FILE)
-          CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE)
+                
+          STORAGE_ACCOUNT=$(yq '.storage_account' $PARAM_FILE | tr -d '"')
+          CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE | tr -d '"')
+          SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE | tr -d '"')
+          SOURCEURL=$(yq '.sourceURL' $PARAM_FILE | tr -d '"')
 
           echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_ENV
           echo "SOURCEURL=$SOURCEURL" >> $GITHUB_ENV
