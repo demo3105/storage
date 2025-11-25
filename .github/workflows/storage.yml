@@ -100,8 +100,8 @@ jobs:
 
             az storage blob upload \
               --auth-mode login \
-              --account-name "$STORAGEACCOUNT" \
-              --container-name "$CONTAINERNAME" \
+              --account-name "$STORAGE_ACCOUNT" \
+              --container-name "$CONTAINER_NAME" \
               --file "$file" \
               --name "$rel_path" \
               --overwrite
