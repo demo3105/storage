@@ -1,11 +1,6 @@
-storage_account: qademostorage123
-container_name: qadbcontroldb
-resource_group: demostorage
-
-replacements:
-  rgdemostorage: qademodemostorage123
-  storagecamp01us2dev.dfs.core.windows.net: qademostorage123.dfs.core.windows.net
-  sourceaccount: qademodemostorage123
-  sourceURL: qademostorage123.dfs.core.windows.net
-  source: qade
-
+storage_account: "qademostorage123"
+container_name: "qadbcontroldb"
+resource_group: "demostorage"
+sourceaccount: "qademodemostorage123"
+sourceURL: "qademostorage123.dfs.core.windows.net"
+source: "qade"
