@@ -3,4 +3,6 @@ container_name: "qadbcontroldb"
 resource_group: "demostorage"
 sourceaccount: "qademodemostorage123"
 sourceURL: "qademostorage123.dfs.core.windows.net"
+sourceaccount: "test",
+sourceURL: "storagecamp01us2test"
 source: "qade"
