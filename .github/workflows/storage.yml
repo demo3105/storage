@@ -85,8 +85,15 @@ jobs:
 
       - name: Replace DEV values with Environment values
         run: |
-          DEV_SOURCEACCOUNT="rgdemostorage"
-          DEV_SOURCEURL="storagecamp01us2dev.dfs.core.windows.net"
+    
+          # For demo.json
+          DEV_DEMO_SOURCEACCOUNT="rgdemostorage"
+          DEV_DEMO_SOURCEURL="storagecamp01us2dev.dfs.core.windows.net"
+          
+          # For storage.json
+          DEV_STORAGE_SOURCEACCOUNT="dev"
+          DEV_STORAGE_SOURCEURL="storagecamp01us2dev"
+
 
           for file in $(find "$SOURCE_DIR" -name "*.json"); do
             echo "Updating $file"
