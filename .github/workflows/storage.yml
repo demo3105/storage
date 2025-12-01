@@ -97,10 +97,21 @@ jobs:
 
           for file in $(find "$SOURCE_DIR" -name "*.json"); do
             echo "Updating $file"
+            filename=$(basename "$file")
 
-            sed -i "s/$DEV_SOURCEACCOUNT/$SOURCEACCOUNT/g" "$file"
-            sed -i "s|$DEV_SOURCEURL|$SOURCEURL|g" "$file"
+
+            if [[ "$filename" == "demo.json" ]]; then
+              sed -i "s|$DEV_DEMO_SOURCEACCOUNT|$SOURCEACCOUNT|g" "$file"
+              sed -i "s|$DEV_DEMO_SOURCEURL|$SOURCEURL|g" "$file"
+          fi
+        
+          if [[ "$filename" == "storage.json" ]]; then
+              sed -i "s|$DEV_STORAGE_SOURCEACCOUNT|$SOURCEACCOUNT|g" "$file"
+              sed -i "s|$DEV_STORAGE_SOURCEURL|$SOURCEURL|g" "$file"
+          fi
+
           done
+
 
       - name: Upload JSON files to Storage
         run: |
