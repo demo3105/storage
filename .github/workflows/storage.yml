@@ -66,8 +66,8 @@ jobs:
 
           echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_ENV
           echo "SOURCEURL=$SOURCEURL" >> $GITHUB_ENV
-          echo "STORAGEACCOUNT=$STORAGE_ACCOUNT" >> $GITHUB_ENV
-          echo "CONTAINERNAME=$CONTAINER_NAME" >> $GITHUB_ENV
+          echo "STORAGE_ACCOUNT=$STORAGE_ACCOUNT" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
           echo "SOURCE_DIR=storage_folder" >> $GITHUB_ENV
 
       - name: Azure login using Service Principal
