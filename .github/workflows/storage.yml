@@ -63,6 +63,8 @@ jobs:
           CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE | tr -d '"')
           SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE | tr -d '"')
           SOURCEURL=$(yq '.sourceURL' $PARAM_FILE | tr -d '"')
+          SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE | tr -d '"')
+          SOURCEURL=$(yq '.sourceURL' $PARAM_FILE | tr -d '"')
 
           echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_ENV
           echo "SOURCEURL=$SOURCEURL" >> $GITHUB_ENV
