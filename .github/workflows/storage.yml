@@ -1,10 +1,8 @@
-name: Deploy JSON to Storage (Converted)
+name: Deploy JSON to Storage (Windows)
 
 on:
   workflow_dispatch:
- 
-    
- 
+
 concurrency:
   group: github-metadata-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -16,115 +14,116 @@ permissions:
 jobs:
   get_environment:
     name: Get Environment
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     outputs:
       environment: ${{ steps.get_environment.outputs.environment }}
-      #deploy_env: ${{ steps.get_environment.outputs.deploy_env }}
     steps:
       - id: get_environment
+        shell: pwsh
         run: |
-          branch="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref_name }}"
-          if [ "$branch" == "test" ]; then
-            echo "environment=qa" >> "$GITHUB_OUTPUT"
-            #echo "deploy_env=test-deploy" >> "$GITHUB_OUTPUT"
-          elif [ "$branch" == "main" ]; then
-            echo "environment=prod" >> "$GITHUB_OUTPUT"
-            echo "deploy_env=prod-deploy" >> "$GITHUB_OUTPUT"
-          else
-            echo "environment=dev" >> "$GITHUB_OUTPUT"
-            #echo "deploy_env=dev-deploy" >> "$GITHUB_OUTPUT"
-          fi
+          $branch = "${{ github.ref_name }}"
+
+          if ($branch -eq "test") {
+             "environment=qa" >> $env:GITHUB_OUTPUT
+          }
+          elseif ($branch -eq "main") {
+             "environment=prod" >> $env:GITHUB_OUTPUT
+          }
+          else {
+             "environment=dev" >> $env:GITHUB_OUTPUT
+          }
 
   deploy:
     name: Deploy Metadata - ${{ needs.get_environment.outputs.environment }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: [get_environment]
-    environment: ${{ needs.get_environment.outputs.deploy_env }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Install yq on Windows
       - name: Install yq
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y yq
+          choco install yq -y
 
-      # Load environment parameter YAML
       - name: Load environment parameters
         id: params
+        shell: pwsh
         run: |
-          ENV="${{ needs.get_environment.outputs.environment }}"
-          PARAM_FILE="parameter/${ENV}.yml"
+          $ENV = "${{ needs.get_environment.outputs.environment }}"
+          $PARAM_FILE = "parameter/$ENV.yml"
 
-          echo "Using parameter file: $PARAM_FILE"
-                
-          STORAGE_ACCOUNT=$(yq '.storage_account' $PARAM_FILE | tr -d '"')
-          CONTAINER_NAME=$(yq '.container_name' $PARAM_FILE | tr -d '"')
-          SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE | tr -d '"')
-          SOURCEURL=$(yq '.sourceURL' $PARAM_FILE | tr -d '"')
-          SOURCEACCOUNT=$(yq '.sourceaccount' $PARAM_FILE | tr -d '"')
-          SOURCEURL=$(yq '.sourceURL' $PARAM_FILE | tr -d '"')
+          Write-Host "Using parameter file: $PARAM_FILE"
 
-          echo "SOURCEACCOUNT=$SOURCEACCOUNT" >> $GITHUB_ENV
-          echo "SOURCEURL=$SOURCEURL" >> $GITHUB_ENV
-          echo "STORAGE_ACCOUNT=$STORAGE_ACCOUNT" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-          echo "SOURCE_DIR=storage_folder" >> $GITHUB_ENV
+          $STORAGE_ACCOUNT = yq e '.storage_account' $PARAM_FILE
+          $CONTAINER_NAME  = yq e '.container_name' $PARAM_FILE
+          $SOURCEACCOUNT   = yq e '.sourceaccount' $PARAM_FILE
+          $SOURCEURL       = yq e '.sourceURL' $PARAM_FILE
+
+          echo "STORAGE_ACCOUNT=$STORAGE_ACCOUNT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "CONTAINER_NAME=$CONTAINER_NAME" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "SOURCEACCOUNT=$SOURCEACCOUNT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "SOURCEURL=$SOURCEURL" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "SOURCE_DIR=storage_folder" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Azure login using Service Principal
+        shell: pwsh
         run: |
-    
-          az login --service-principal \
-          --username "${{ secrets.AZURE_CLIENT_ID }}" \
-          --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
-          --tenant "${{ secrets.AZURE_TENANT_ID }}"
+          az login --service-principal `
+            --username  "${{ secrets.AZURE_CLIENT_ID }}" `
+            --password  "${{ secrets.AZURE_CLIENT_SECRET }}" `
+            --tenant    "${{ secrets.AZURE_TENANT_ID }}"
+
           az account set --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
-    
-        
 
       - name: Replace DEV values with Environment values
+        shell: pwsh
         run: |
-    
-          # For demo.json
-          DEV_DEMO_SOURCEACCOUNT="rgdemostorage"
-          DEV_DEMO_SOURCEURL="storagecamp01us2dev.dfs.core.windows.net"
-          
-          # For storage.json
-          DEV_STORAGE_SOURCEACCOUNT="dev"
-          DEV_STORAGE_SOURCEURL="storagecamp01us2dev"
+          $SourceDir = $env:SOURCE_DIR
 
+          $DEV_DEMO_SOURCEACCOUNT  = "rgdemostorage"
+          $DEV_DEMO_SOURCEURL      = "storagecamp01us2dev.dfs.core.windows.net"
+          $DEV_STORAGE_SOURCEACCOUNT = "dev"
+          $DEV_STORAGE_SOURCEURL     = "storagecamp01us2dev"
 
-          for file in $(find "$SOURCE_DIR" -name "*.json"); do
-            echo "Updating $file"
-            filename=$(basename "$file")
+          $jsonFiles = Get-ChildItem -Path $SourceDir -Recurse -Filter *.json
 
+          foreach ($file in $jsonFiles) {
+            Write-Host "Updating $file"
 
-            if [[ "$filename" == "demo.json" ]]; then
-              sed -i "s|$DEV_DEMO_SOURCEACCOUNT|$SOURCEACCOUNT|g" "$file"
-              sed -i "s|$DEV_DEMO_SOURCEURL|$SOURCEURL|g" "$file"
-          fi
-        
-          if [[ "$filename" == "storage.json" ]]; then
-              sed -i "s|$DEV_STORAGE_SOURCEACCOUNT|$SOURCEACCOUNT|g" "$file"
-              sed -i "s|$DEV_STORAGE_SOURCEURL|$SOURCEURL|g" "$file"
-          fi
+            $content = Get-Content $file.FullName
 
-          done
+            if ($file.Name -eq "demo.json") {
+              $content = $content -replace $DEV_DEMO_SOURCEACCOUNT, $env:SOURCEACCOUNT
+              $content = $content -replace $DEV_DEMO_SOURCEURL, $env:SOURCEURL
+            }
 
+            if ($file.Name -eq "storage.json") {
+              $content = $content -replace $DEV_STORAGE_SOURCEACCOUNT, $env:SOURCEACCOUNT
+              $content = $content -replace $DEV_STORAGE_SOURCEURL, $env:SOURCEURL
+            }
+
+            Set-Content -Path $file.FullName -Value $content
+          }
 
       - name: Upload JSON files to Storage
+        shell: pwsh
         run: |
-          
-          for file in $(find "$SOURCE_DIR" -name "*.json"); do
-            rel_path="demodb/$(basename "$file")"
-            echo "Uploading $file --> $rel_path"
+          $SourceDir = $env:SOURCE_DIR
 
-            az storage blob upload \
-              --auth-mode login \
-              --account-name "$STORAGE_ACCOUNT" \
-              --container-name "$CONTAINER_NAME" \
-              --file "$file" \
-              --name "$rel_path" \
+          $files = Get-ChildItem -Path $SourceDir -Recurse -Filter *.json
+
+          foreach ($file in $files) {
+            $rel_path = "demodb/$($file.Name)"
+            Write-Host "Uploading $file --> $rel_path"
+
+            az storage blob upload `
+              --auth-mode login `
+              --account-name  "$env:STORAGE_ACCOUNT" `
+              --container-name "$env:CONTAINER_NAME" `
+              --file "$($file.FullName)" `
+              --name "$rel_path" `
               --overwrite
-          done
+          }
