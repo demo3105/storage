@@ -108,22 +108,68 @@ jobs:
             Set-Content -Path $file.FullName -Value $content
           }
 
-      - name: Upload JSON files to Storage
+     # - name: Upload JSON files to Storage
+    #    shell: pwsh
+     #   run: |
+      #    $SourceDir = $env:SOURCE_DIR
+#
+ #         $files = Get-ChildItem -Path $SourceDir -Recurse -Filter *.json
+#
+        #  foreach ($file in $files) {
+         #   $rel_path = "demodb/$($file.Name)"
+          #  Write-Host "Uploading $file --> $rel_path"
+
+         #   az storage blob upload `
+          #    --auth-mode login `
+           #   --account-name  "$env:STORAGE_ACCOUNT" `
+            #  --container-name "$env:CONTAINER_NAME" `
+            #  --file "$($file.FullName)" `
+            #  --name "$rel_path" `
+            #  --overwrite
+          #}
+      - name: Upload all files to Storage (preserve existing folder structure)
         shell: pwsh
         run: |
-          $SourceDir = $env:SOURCE_DIR
-
-          $files = Get-ChildItem -Path $SourceDir -Recurse -Filter *.json
-
-          foreach ($file in $files) {
-            $rel_path = "demodb/$($file.Name)"
-            Write-Host "Uploading $file --> $rel_path"
-
-            az storage blob upload `
-              --auth-mode login `
-              --account-name  "$env:STORAGE_ACCOUNT" `
-              --container-name "$env:CONTAINER_NAME" `
-              --file "$($file.FullName)" `
-              --name "$rel_path" `
-              --overwrite
+          Write-Host "Deploying to RG=$env:RESOURCE_GROUP, Storage=$env:STORAGE_ACCOUNT, Container=$env:CONTAINER_NAME"
+          Write-Host "SOURCE DIR = $env:SOURCE_DIR"
+ 
+          if (-not (Test-Path -LiteralPath $env:SOURCE_DIR)) {
+              Write-Error "ERROR: Folder $env:SOURCE_DIR does not exist!"
+              exit 1
           }
+
+          Write-Host "Scanning ALL files inside $env:SOURCE_DIR ..."
+
+          # Collect ALL files
+          $allFiles = Get-ChildItem -Path $env:SOURCE_DIR -Recurse -File
+
+          if ($allFiles.Count -eq 0) {
+              Write-Host "No files found. Nothing to upload."
+              exit 0
+          }
+
+          # Absolute SOURCE_DIR for substring logic
+          $sourceDirFull = (Resolve-Path -LiteralPath $env:SOURCE_DIR).Path
+
+          foreach ($file in $allFiles) {
+
+              $fullPath = $file.FullName
+
+              # RELATIVE PATH (same as Bash: ${file#$SOURCE_DIR/})
+              $relative = $fullPath.Substring($sourceDirFull.Length).TrimStart('\','/')
+
+              # BLOB upload path
+              $relPath = $relative
+
+              Write-Host "Updating $($env:SOURCE_DIR)/$relative"
+              Write-Host "Uploading $($env:SOURCE_DIR)/$relative --> $relPath"
+
+              az storage blob upload `
+                --auth-mode login `
+                --account-name  $env:STORAGE_ACCOUNT `
+                --container-name $env:CONTAINER_NAME `
+                --file "$fullPath" `
+                --name "$relPath" `
+                --overwrite
+          }
+
